@@ -14,6 +14,25 @@ export interface SpotConfig {
   waveType: string;
 }
 
+export interface TideExtreme {
+  time: string;
+  height: number; // meters relative to MSL
+  type: "high" | "low";
+}
+
+export interface TidePoint {
+  time: string;
+  height: number; // meters relative to MSL
+}
+
+export interface TideData {
+  extremes: TideExtreme[];
+  hourly: TidePoint[];
+}
+
+export type TideState = "low" | "mid" | "high";
+export type TideTrend = "rising" | "falling" | "slack";
+
 export interface HourlyForecast {
   time: string;
   waveHeight: number; // meters
@@ -26,6 +45,9 @@ export interface HourlyForecast {
   windDirection: number; // degrees
   windGusts: number; // km/h
   temperature: number; // celsius
+  tideHeight: number | null; // meters relative to MSL
+  tideState: TideState | null;
+  tideTrend: TideTrend | null;
 }
 
 export interface DailyForecast {
@@ -36,6 +58,7 @@ export interface DailyForecast {
   hours: HourlyForecast[];
   bestHour: HourlyForecast | null;
   avgRating: number;
+  tideExtremes: TideExtreme[];
 }
 
 export interface SpotForecast {
@@ -44,4 +67,5 @@ export interface SpotForecast {
   daily: DailyForecast[];
   currentConditions: HourlyForecast | null;
   currentRating: number;
+  tides: TideData | null;
 }

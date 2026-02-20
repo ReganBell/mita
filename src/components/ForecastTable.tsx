@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DailyForecast, SpotConfig } from "@/lib/types";
+import { DailyForecast, SpotConfig, TideExtreme } from "@/lib/types";
 import {
   scoreHour,
   ratingColor,
@@ -90,72 +90,115 @@ export default function ForecastTable({
 
             {isExpanded && (
               <div className="border-t border-neutral-800">
+                {/* Tide extremes for the day */}
+                {day.tideExtremes.length > 0 && (
+                  <div className="px-4 py-2 border-b border-neutral-800/50 flex flex-wrap gap-3">
+                    {day.tideExtremes.map((ext: TideExtreme) => (
+                      <span key={ext.time} className="text-[10px] text-neutral-400">
+                        <span className={ext.type === "high" ? "text-sky-400" : "text-amber-400"}>
+                          {ext.type === "high" ? "\u25B2" : "\u25BC"}
+                        </span>{" "}
+                        {ext.type.charAt(0).toUpperCase() + ext.type.slice(1)}{" "}
+                        {ext.height.toFixed(1)}m{" "}
+                        <span className="text-neutral-500">
+                          {new Date(ext.time).toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {/* Column headers */}
-                <div className="grid grid-cols-[3.5rem_1fr_1fr_1fr_2.5rem] gap-2 px-4 py-2 text-[10px] text-neutral-500 uppercase tracking-wider border-b border-neutral-800/50">
-                  <div>Time</div>
-                  <div>Waves</div>
-                  <div>Swell</div>
-                  <div>Wind</div>
-                  <div className="text-right">Rtg</div>
-                </div>
-
-                {/* Show daylight hours (5am - 9pm) */}
-                {day.hours
-                  .filter((h) => {
-                    const hr = new Date(h.time).getHours();
-                    return hr >= 5 && hr <= 21;
-                  })
-                  .map((h) => {
-                    const rating = scoreHour(h, spot);
-                    const timeStr = new Date(h.time).toLocaleTimeString(
-                      "en-US",
-                      { hour: "numeric", hour12: true }
-                    );
-
-                    return (
-                      <div
-                        key={h.time}
-                        className={`grid grid-cols-[3.5rem_1fr_1fr_1fr_2.5rem] gap-2 px-4 py-2 text-xs border-b border-neutral-800/30 ${ratingBg(rating)}`}
-                      >
-                        <div className="text-neutral-400 font-medium">
-                          {timeStr}
-                        </div>
-                        <div>
-                          <span className="text-neutral-200">
-                            {metersToFeet(h.waveHeight)}ft
-                          </span>{" "}
-                          <span className="text-neutral-500">
-                            {h.wavePeriod.toFixed(0)}s{" "}
-                            {compassDir(h.waveDirection)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-200">
-                            {metersToFeet(h.swellHeight)}ft
-                          </span>{" "}
-                          <span className="text-neutral-500">
-                            {h.swellPeriod.toFixed(0)}s{" "}
-                            {compassDir(h.swellDirection)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-200">
-                            {h.windSpeed.toFixed(0)}
-                          </span>{" "}
-                          <span className="text-neutral-500">
-                            {compassDir(h.windDirection)}
-                            {h.windGusts > h.windSpeed + 5 &&
-                              ` G${h.windGusts.toFixed(0)}`}
-                          </span>
-                        </div>
-                        <div
-                          className={`text-right font-bold ${ratingColor(rating)}`}
-                        >
-                          {rating.toFixed(1)}
-                        </div>
+                {(() => {
+                  const hasTide = day.hours.some((h) => h.tideState !== null);
+                  const gridCols = hasTide
+                    ? "grid-cols-[3.5rem_1fr_1fr_1fr_3rem_2.5rem]"
+                    : "grid-cols-[3.5rem_1fr_1fr_1fr_2.5rem]";
+                  return (
+                    <>
+                      <div className={`grid ${gridCols} gap-2 px-4 py-2 text-[10px] text-neutral-500 uppercase tracking-wider border-b border-neutral-800/50`}>
+                        <div>Time</div>
+                        <div>Waves</div>
+                        <div>Swell</div>
+                        <div>Wind</div>
+                        {hasTide && <div>Tide</div>}
+                        <div className="text-right">Rtg</div>
                       </div>
-                    );
-                  })}
+
+                      {/* Show daylight hours (5am - 9pm) */}
+                      {day.hours
+                        .filter((h) => {
+                          const hr = new Date(h.time).getHours();
+                          return hr >= 5 && hr <= 21;
+                        })
+                        .map((h) => {
+                          const rating = scoreHour(h, spot);
+                          const timeStr = new Date(h.time).toLocaleTimeString(
+                            "en-US",
+                            { hour: "numeric", hour12: true }
+                          );
+
+                          return (
+                            <div
+                              key={h.time}
+                              className={`grid ${gridCols} gap-2 px-4 py-2 text-xs border-b border-neutral-800/30 ${ratingBg(rating)}`}
+                            >
+                              <div className="text-neutral-400 font-medium">
+                                {timeStr}
+                              </div>
+                              <div>
+                                <span className="text-neutral-200">
+                                  {metersToFeet(h.waveHeight)}ft
+                                </span>{" "}
+                                <span className="text-neutral-500">
+                                  {h.wavePeriod.toFixed(0)}s{" "}
+                                  {compassDir(h.waveDirection)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-neutral-200">
+                                  {metersToFeet(h.swellHeight)}ft
+                                </span>{" "}
+                                <span className="text-neutral-500">
+                                  {h.swellPeriod.toFixed(0)}s{" "}
+                                  {compassDir(h.swellDirection)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-neutral-200">
+                                  {h.windSpeed.toFixed(0)}
+                                </span>{" "}
+                                <span className="text-neutral-500">
+                                  {compassDir(h.windDirection)}
+                                  {h.windGusts > h.windSpeed + 5 &&
+                                    ` G${h.windGusts.toFixed(0)}`}
+                                </span>
+                              </div>
+                              {hasTide && (
+                                <div className="text-neutral-400 capitalize text-[10px] leading-4">
+                                  {h.tideState ?? "—"}
+                                  {h.tideTrend && h.tideTrend !== "slack" && (
+                                    <span className="text-neutral-600">
+                                      {" "}{h.tideTrend === "rising" ? "\u2191" : "\u2193"}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div
+                                className={`text-right font-bold ${ratingColor(rating)}`}
+                              >
+                                {rating.toFixed(1)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </>
+                  );
+                })()}
 
                 {/* Sunrise/Sunset footer */}
                 {day.sunrise && (

@@ -86,6 +86,23 @@ function scorePeriod(period: number): number {
 }
 
 /**
+ * Score tide state for a spot. Returns 0-1.
+ * Matches spot's ideal tide preference.
+ */
+function scoreTide(hour: HourlyForecast, spot: SpotConfig): number {
+  if (hour.tideState === null || spot.idealTide === "any") return 0.5; // neutral when unknown
+  if (hour.tideState === spot.idealTide) return 1;
+  // Adjacent tide state is ok
+  const adjacent: Record<string, string[]> = {
+    low: ["mid"],
+    mid: ["low", "high"],
+    high: ["mid"],
+  };
+  if (adjacent[spot.idealTide]?.includes(hour.tideState)) return 0.5;
+  return 0.15;
+}
+
+/**
  * Overall quality score for an hour at a specific spot.
  * Returns 1-5 rating.
  */
@@ -94,13 +111,14 @@ export function scoreHour(hour: HourlyForecast, spot: SpotConfig): number {
   const wind = scoreWind(hour.windSpeed, hour.windDirection, spot);
   const waveH = scoreWaveHeight(hour.swellHeight || hour.waveHeight, spot);
   const period = scorePeriod(hour.swellPeriod || hour.wavePeriod);
+  const tide = scoreTide(hour, spot);
 
-  // Weighted average
-  const raw =
-    swellDir * 0.25 +
-    wind * 0.3 +
-    waveH * 0.3 +
-    period * 0.15;
+  const hasTide = hour.tideState !== null;
+
+  // Weighted average — redistribute weight when tide data available
+  const raw = hasTide
+    ? swellDir * 0.2 + wind * 0.25 + waveH * 0.25 + period * 0.15 + tide * 0.15
+    : swellDir * 0.25 + wind * 0.3 + waveH * 0.3 + period * 0.15;
 
   // Map 0-1 to 1-5
   return Math.round((1 + raw * 4) * 10) / 10;

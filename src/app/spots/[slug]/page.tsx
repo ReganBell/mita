@@ -114,6 +114,18 @@ export default async function SpotPage({
                 {((c.temperature * 9) / 5 + 32).toFixed(0)}&deg;F
               </div>
             </div>
+            {c.tideState !== null && (
+              <div>
+                <div className="text-neutral-500 text-xs">Tide</div>
+                <div className="text-neutral-100 text-xl font-bold capitalize">
+                  {c.tideState}
+                </div>
+                <div className="text-neutral-500 text-xs capitalize">
+                  {c.tideTrend}
+                  {c.tideHeight !== null && ` (${c.tideHeight >= 0 ? "+" : ""}${c.tideHeight.toFixed(1)}m)`}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Ideal conditions note */}
@@ -150,6 +162,19 @@ export default async function SpotPage({
           >
             Open-Meteo
           </a>
+          {forecast.tides && (
+            <>
+              {" & "}
+              <a
+                href="https://stormglass.io/"
+                className="underline hover:text-neutral-400"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                StormGlass
+              </a>
+            </>
+          )}
           . Conditions are approximate.
         </p>
       </footer>

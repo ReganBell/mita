@@ -38,7 +38,7 @@ export default function SpotCard({ forecast }: { forecast: SpotForecast }) {
       </div>
 
       {c && (
-        <div className="grid grid-cols-3 gap-3 text-sm mb-4">
+        <div className={`grid ${c.tideState !== null ? "grid-cols-4" : "grid-cols-3"} gap-3 text-sm mb-4`}>
           <div>
             <div className="text-neutral-500 text-xs">Waves</div>
             <div className="text-neutral-200 font-medium">
@@ -68,6 +68,17 @@ export default function SpotCard({ forecast }: { forecast: SpotForecast }) {
                 ` G${c.windGusts.toFixed(0)}`}
             </div>
           </div>
+          {c.tideState !== null && (
+            <div>
+              <div className="text-neutral-500 text-xs">Tide</div>
+              <div className="text-neutral-200 font-medium capitalize">
+                {c.tideState}
+              </div>
+              <div className="text-neutral-500 text-xs capitalize">
+                {c.tideTrend}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

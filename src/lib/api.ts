@@ -1,5 +1,12 @@
-import { HourlyForecast, DailyForecast, SpotConfig, SpotForecast } from "./types";
+import { HourlyForecast, DailyForecast, SpotConfig, SpotForecast, TideData } from "./types";
 import { scoreHour } from "./scoring";
+import {
+  fetchTides,
+  getTideHeightAt,
+  classifyTideState,
+  getTideTrend,
+  getExtremesForDate,
+} from "./tides";
 
 const MARINE_API = "https://marine-api.open-meteo.com/v1/marine";
 const WEATHER_API = "https://api.open-meteo.com/v1/forecast";
@@ -60,7 +67,11 @@ async function fetchWeather(lat: number, lng: number): Promise<WeatherResponse> 
   return res.json();
 }
 
-function mergeForecasts(marine: MarineResponse, weather: WeatherResponse): HourlyForecast[] {
+function mergeForecasts(
+  marine: MarineResponse,
+  weather: WeatherResponse,
+  tides: TideData | null
+): HourlyForecast[] {
   const hourly: HourlyForecast[] = [];
   const marineTimeSet = new Set(marine.hourly.time);
 
@@ -68,6 +79,18 @@ function mergeForecasts(marine: MarineResponse, weather: WeatherResponse): Hourl
     const time = weather.hourly.time[i];
     const mi = marine.hourly.time.indexOf(time);
     if (mi === -1 || !marineTimeSet.has(time)) continue;
+
+    let tideHeight: number | null = null;
+    let tideState = null;
+    let tideTrend = null;
+
+    if (tides) {
+      tideHeight = getTideHeightAt(tides, time);
+      if (tideHeight !== null) {
+        tideState = classifyTideState(tideHeight, tides, time);
+      }
+      tideTrend = getTideTrend(tides, time);
+    }
 
     hourly.push({
       time,
@@ -81,6 +104,9 @@ function mergeForecasts(marine: MarineResponse, weather: WeatherResponse): Hourl
       windDirection: weather.hourly.wind_direction_10m[i] ?? 0,
       windGusts: weather.hourly.wind_gusts_10m[i] ?? 0,
       temperature: weather.hourly.temperature_2m[i] ?? 0,
+      tideHeight,
+      tideState,
+      tideTrend,
     });
   }
 
@@ -90,7 +116,8 @@ function mergeForecasts(marine: MarineResponse, weather: WeatherResponse): Hourl
 function groupByDay(
   hourly: HourlyForecast[],
   weather: WeatherResponse,
-  spot: SpotConfig
+  spot: SpotConfig,
+  tides: TideData | null
 ): DailyForecast[] {
   const dayMap = new Map<string, HourlyForecast[]>();
 
@@ -115,6 +142,7 @@ function groupByDay(
       hours,
       bestHour: hours[bestIdx] ?? null,
       avgRating,
+      tideExtremes: tides ? getExtremesForDate(tides, date) : [],
     });
   }
 
@@ -137,17 +165,18 @@ function findCurrentHour(hourly: HourlyForecast[]): HourlyForecast | null {
 }
 
 export async function fetchSpotForecast(spot: SpotConfig): Promise<SpotForecast> {
-  const [marine, weather] = await Promise.all([
+  const [marine, weather, tides] = await Promise.all([
     fetchMarine(spot.lat, spot.lng),
     fetchWeather(spot.lat, spot.lng),
+    fetchTides(spot.lat, spot.lng),
   ]);
 
-  const hourly = mergeForecasts(marine, weather);
-  const daily = groupByDay(hourly, weather, spot);
+  const hourly = mergeForecasts(marine, weather, tides);
+  const daily = groupByDay(hourly, weather, spot, tides);
   const currentConditions = findCurrentHour(hourly);
   const currentRating = currentConditions ? scoreHour(currentConditions, spot) : 0;
 
-  return { spot, hourly, daily, currentConditions, currentRating };
+  return { spot, hourly, daily, currentConditions, currentRating, tides };
 }
 
 export async function fetchAllForecasts(): Promise<SpotForecast[]> {
